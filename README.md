@@ -1,4 +1,4 @@
-Intl.Locale
+Intl.ListFormat
 ================
 
 A polyfill for the upcoming [Intl.ListFormat](https://github.com/zbraniecki/intl-listformat-spec)

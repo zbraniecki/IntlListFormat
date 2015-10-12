@@ -17,6 +17,8 @@ export default class ListFormat {
   constructor(locales, options = {}) {
     this.locale = locales ? locales[0] : 'en-US';
     this.style = getStyle(options);
+
+    this._templates = listFormatData[this.locale][this.style];
   }
 
   static supportedLocalesOf(locales, options = {}) {
@@ -30,8 +32,6 @@ export default class ListFormat {
   }
 
   format(list) {
-    const templates = listFormatData[this.locale][this.style];
-
     const length = list.length;
 
     if (length === 0) {
@@ -43,20 +43,21 @@ export default class ListFormat {
     }
 
     if (length === 2) {
-      const template = templates['2'];
-      return template.replace(/\{([0-9])\}/g, (m,v) => {
+      const template = this._templates['2'];
+      return template.replace(/\{([0-9])\}/g, (m, v) => {
         return list[parseInt(v)]
       });
     }
 
-    let string = templates['end'];
+    let string = this._templates['end'];
     
     string = string.replace('{1}', list[length - 1]);
     string = string.replace('{0}', list[length - 2]);
 
-    // middles
-    for (let i = length - 3; i > 0; i--) {
-      string = templates['middle'].replace(/\{([0-9])\}/g, (m, v) => {
+    for (let i = length - 3; i >= 0; i--) {
+      const template = this._templates[i === 0 ? 'start' : 'middle'];
+
+      string = template.replace(/\{([0-9])\}/g, (m, v) => {
         if (v === '0') {
           return list[i];
         }
@@ -66,14 +67,6 @@ export default class ListFormat {
       });
     }
 
-    string = templates['start'].replace(/\{([0-9])\}/g, (m, v) => {
-      if (v === '0') {
-        return list[0];
-      }
-      if (v === '1') {
-        return string;
-      }
-    });
     return string;
   }
 };
