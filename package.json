@@ -1,0 +1,55 @@
+{
+  "name": "intl-listformat",
+  "version": "0.1.0",
+  "description": "Intl.ListFormat polyfill",
+  "keywords": [
+    "unicode",
+    "cldr",
+    "i18n",
+    "internationalization"
+  ],
+  "author": "Zibi Braniecki <zbraniecki@mozilla.com>",
+  "license": "ISC",
+  "homepage": "https://github.com/zbraniecki/IntlListFormat",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zbraniecki/IntlListFormat.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zbraniecki/IntlListFormat/issues"
+  },
+  "files": [
+    "polyfill.*"
+  ],
+  "main": "polyfill",
+  "devDependencies": {
+  },
+  "eslintConfig": {
+    "ecmaFeatures": {
+      "modules": true
+    },
+    "env": {
+      "es6": true,
+      "browser": true,
+      "node": true
+    },
+    "rules": {
+      "curly": [
+        2,
+        "multi-line"
+      ],
+      "eqeqeq": [
+        1,
+        "smart"
+      ],
+      "quotes": [
+        1,
+        "single",
+        "avoid-escape"
+      ]
+    }
+  },
+  "scripts": {
+    "test": "make test"
+  }
+}
