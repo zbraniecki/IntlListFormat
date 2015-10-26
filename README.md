@@ -1,7 +1,8 @@
 Intl.ListFormat
 ================
 
-A polyfill for the upcoming [Intl.ListFormat](https://github.com/zbraniecki/intl-listformat-spec)
+A polyfill for the upcoming
+[Intl.ListFormat](https://github.com/zbraniecki/intl-list-format-spec)
 specification.
 
 
