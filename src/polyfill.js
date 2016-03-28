@@ -2,16 +2,106 @@ import { listFormatData } from './data.js';
 
 // http://cldr.unicode.org/development/development-process/design-proposals/list-formatting
 
-function getStyle({ style }) {
-  if (!style) {
+function getStyle({ type, style }) {
+  if (!type) {
     return 'regular';
   }
-  if (['regular', 'duration', 'duration-short', 'duration-narrow'].indexOf(style) < 0) {
+  if (['regular', 'duration'].indexOf(type) < 0) {
     throw new RangeError('Not a valid style: ' + JSON.stringify(style));
   }
-  return style;
+  if (type === 'regular') {
+    return 'regular';
+  }
+  return `duration-${style}`;
 }
 
+function deconstructPattern(pattern, placeables) {
+  const parts = pattern.split(/\{([^\}]+)\}/);
+  const result = [];
+
+  parts.forEach((part, i) => {
+    if (i % 2 === 0) {
+      if (part.length > 0) {
+        result.push({type: 'literal', value: part});
+      }
+    } else {
+      const subst = placeables[part];
+      if (!subst) {
+        throw new Error(`Missing placeable: "${part}"`);
+      }
+      if (Array.isArray(subst)) {
+        result.push(...subst);
+      } else {
+        result.push(subst);
+      }
+    }
+  });
+  return result;
+}
+
+function constructParts(pattern, list) {
+  if (list.length === 1) {
+    return [{type: 'element', value: list[0]}];
+  }
+
+  const elem0 = typeof list[0] === 'string' ?
+    {type: 'element', value: list[0]} : list[0];
+
+  let elem1;
+
+  if (list.length === 2) {
+    if (typeof list[1] === 'string') {
+      elem1 = {type: 'element', value: list[1]}; 
+    } else {
+      elem1 = list[1];
+    }
+  } else {
+    elem1 = constructParts(pattern, list.slice(1));
+  }
+
+  return deconstructPattern(pattern, {
+    '0': elem0,
+    '1': elem1
+  });
+}
+
+function FormatToParts(templates, list) {
+  if (!Array.isArray(list)) {
+    return [
+      {type: 'element', value: list}
+    ];
+  }
+
+  const length = list.length;
+
+  if (length === 0) {
+    return [
+      {type: 'element', value: ''}
+    ];
+  }
+
+  if (length === 1) {
+    return [
+      {type: 'element', value: list[0]}
+    ];
+  }
+
+  if (length === 2) {
+    return constructParts(templates['2'], list);
+  }
+
+  let parts = constructParts(templates['start'], [
+    list[0],
+    constructParts(templates['middle'], list.slice(1, -1))
+  ]);
+
+  parts = constructParts(templates['end'], [
+    parts, 
+    list[list.length - 1]
+  ]);
+
+  return parts;
+}
 
 export default class ListFormat {
   constructor(locales, options = {}) {
@@ -32,42 +122,11 @@ export default class ListFormat {
   }
 
   format(list) {
-    const length = list.length;
-
-    if (length === 0) {
-      return ''; 
-    }
-
-    if (length === 1) {
-      return list[0];
-    }
-
-    if (length === 2) {
-      const template = this._templates['2'];
-      return template.replace(/\{([0-9])\}/g, (m, v) => {
-        return list[parseInt(v)]
-      });
-    }
-
-    let string = this._templates['end'];
-    
-    string = string.replace('{1}', list[length - 1]);
-    string = string.replace('{0}', list[length - 2]);
-
-    for (let i = length - 3; i >= 0; i--) {
-      const template = this._templates[i === 0 ? 'start' : 'middle'];
-
-      string = template.replace(/\{([0-9])\}/g, (m, v) => {
-        if (v === '0') {
-          return list[i];
-        }
-        if (v === '1') {
-          return string;
-        }
-      });
-    }
-
-    return string;
+    return FormatToParts(this._templates, list).reduce(
+      (string, part) => string + part.value, '');
+  },
+  formatToParts(list) {
+    return FormatToParts(this._templates, list);
   }
 };
 
@@ -88,3 +147,4 @@ if (typeof Intl === 'undefined') {
     console.warn('Intl.ListFormat already exists, and has NOT been replaced by this polyfill');
     console.log('To force, set a global ClobberIntlListFormat = true');
 }
+
