@@ -15,6 +15,17 @@ function getStyle({ type, style }) {
   return `duration-${style}`;
 }
 
+// @pattern - 'AA{xx}BB{yy}CC'
+// @placeables {xx: 'value1', yy: 'value2'}
+//
+// returns a list of parts, like:
+// [
+//   {type: 'literal', value: 'AA'},
+//   {type: 'element', value: 'value1'},
+//   {type: 'literal', value: 'BB'},
+//   {type: 'element', value: 'value2'},
+//   {type: 'literal', value: 'CC'}
+// ]
 function deconstructPattern(pattern, placeables) {
   const parts = pattern.split(/\{([^\}]+)\}/);
   const result = [];
@@ -39,32 +50,6 @@ function deconstructPattern(pattern, placeables) {
   return result;
 }
 
-function constructParts(pattern, list) {
-  if (list.length === 1) {
-    return [{type: 'element', value: list[0]}];
-  }
-
-  const elem0 = typeof list[0] === 'string' ?
-    {type: 'element', value: list[0]} : list[0];
-
-  let elem1;
-
-  if (list.length === 2) {
-    if (typeof list[1] === 'string') {
-      elem1 = {type: 'element', value: list[1]}; 
-    } else {
-      elem1 = list[1];
-    }
-  } else {
-    elem1 = constructParts(pattern, list.slice(1));
-  }
-
-  return deconstructPattern(pattern, {
-    '0': elem0,
-    '1': elem1
-  });
-}
-
 function FormatToParts(templates, list) {
   if (!Array.isArray(list)) {
     return [
@@ -87,18 +72,26 @@ function FormatToParts(templates, list) {
   }
 
   if (length === 2) {
-    return constructParts(templates['2'], list);
+    return deconstructPattern(templates['2'], {
+      '0': {type: 'element', value: list[0]},
+      '1': {type: 'element', value: list[1]}
+    });
   }
 
-  let parts = constructParts(templates['start'], [
-    list[0],
-    constructParts(templates['middle'], list.slice(1, -1))
-  ]);
+  // See: http://cldr.unicode.org/development/development-process/design-proposals/list-formatting
+  let parts = {type: 'element', value: list[length - 1]};
 
-  parts = constructParts(templates['end'], [
-    parts, 
-    list[list.length - 1]
-  ]);
+  for (let i = length - 2; i >= 0; i--) {
+    let type = 
+      i === length - 2 ?
+        'end' :
+        i === 0 ? 'start' : 'middle';
+
+    parts = deconstructPattern(templates[type], {
+      '0': {type: 'element', value: list[i]},
+      '1': parts
+    });
+  }
 
   return parts;
 }
@@ -124,7 +117,8 @@ export default class ListFormat {
   format(list) {
     return FormatToParts(this._templates, list).reduce(
       (string, part) => string + part.value, '');
-  },
+  }
+
   formatToParts(list) {
     return FormatToParts(this._templates, list);
   }
