@@ -2,17 +2,24 @@ import { listFormatData } from './data.js';
 
 // http://cldr.unicode.org/development/development-process/design-proposals/list-formatting
 
-function getStyle({ type, style }) {
+function getType({ type }) {
   if (!type) {
     return 'regular';
   }
-  if (['regular', 'duration'].indexOf(type) < 0) {
+  if (['regular', 'unit'].indexOf(type) < 0) {
+    throw new RangeError('Not a valid type: ' + JSON.stringify(type));
+  }
+  return type;
+}
+
+function getStyle({ style }) {
+  if (!style) {
+    return 'long';
+  }
+  if (['long', 'short', 'narrow'].indexOf(style) < 0) {
     throw new RangeError('Not a valid style: ' + JSON.stringify(style));
   }
-  if (type === 'regular') {
-    return 'regular';
-  }
-  return `duration-${style}`;
+  return style;
 }
 
 // @pattern - 'AA{xx}BB{yy}CC'
@@ -50,28 +57,24 @@ function deconstructPattern(pattern, placeables) {
   return result;
 }
 
-function FormatToParts(templates, list) {
+function CreatePartsFromList(templates, list) {
   if (!Array.isArray(list)) {
-    return [
-      {type: 'element', value: list}
-    ];
+    return [];
   }
 
-  const length = list.length;
+  const len = list.length;
 
-  if (length === 0) {
-    return [
-      {type: 'element', value: ''}
-    ];
+  if (len === 0) {
+    return [];
   }
 
-  if (length === 1) {
+  if (len === 1) {
     return [
       {type: 'element', value: list[0]}
     ];
   }
 
-  if (length === 2) {
+  if (len === 2) {
     return deconstructPattern(templates['2'], {
       '0': {type: 'element', value: list[0]},
       '1': {type: 'element', value: list[1]}
@@ -79,11 +82,11 @@ function FormatToParts(templates, list) {
   }
 
   // See: http://cldr.unicode.org/development/development-process/design-proposals/list-formatting
-  let parts = {type: 'element', value: list[length - 1]};
+  let parts = {type: 'element', value: list[len - 1]};
 
-  for (let i = length - 2; i >= 0; i--) {
+  for (let i = len - 2; i > -1; i--) {
     let type = 
-      i === length - 2 ?
+      i === len - 2 ?
         'end' :
         i === 0 ? 'start' : 'middle';
 
@@ -99,9 +102,10 @@ function FormatToParts(templates, list) {
 export default class ListFormat {
   constructor(locales, options = {}) {
     this.locale = locales ? locales[0] : 'en-US';
+    this.type = getType(options);
     this.style = getStyle(options);
 
-    this._templates = listFormatData[this.locale][this.style];
+    this._templates = listFormatData[this.locale][this.type][this.style];
   }
 
   static supportedLocalesOf(locales, options = {}) {
@@ -115,12 +119,12 @@ export default class ListFormat {
   }
 
   format(list) {
-    return FormatToParts(this._templates, list).reduce(
+    return CreatePartsFromList(this._templates, list).reduce(
       (string, part) => string + part.value, '');
   }
 
   formatToParts(list) {
-    return FormatToParts(this._templates, list);
+    return CreatePartsFromList(this._templates, list);
   }
 };
 
